@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CanteenMate - Eat Smart, Chill Hard</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root{
+    --grad1:#ff7a59; --grad2:#ffb347;
+    --accent:#36b37e; --warn:#ffb020; --danger:#e53935;
+    --bg:#fff8f0; --card:#ffffff; --text:#2f1f1a; --muted:#7a5f57;
+    --shadow:0 10px 25px rgba(0,0,0,.12);
+  }
+  [data-theme="dark"]{
+    --bg:#151516; --card:#1d1e20; --text:#ececec; --muted:#a5a6ab;
+    --shadow:0 10px 25px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Poppins,system-ui,Arial,sans-serif}
+  header{
+    background:linear-gradient(135deg,var(--grad1),var(--grad2));
+    color:#fff;padding:18px 16px;position:sticky;top:0;z-index:10;
+    box-shadow:var(--shadow);
+  }
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1100px;margin:0 auto}
+  .brand h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:.3px}
+  .brand small{opacity:.9}
+  .toggle{
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+    color:#fff;border-radius:100px;padding:8px 14px;cursor:pointer;font-weight:600
+  }
+  .container{
+    max-width:1100px;margin:26px auto;padding:18px;background:var(--card);
+    border-radius:18px;box-shadow:var(--shadow);animation:fadeIn .5s ease
+  }
+  h2{margin:0 0 12px;color:#ff7a59}
+  .instructions{margin-top:-8px;margin-bottom:12px;color:var(--muted);font-size:0.9rem;}
+  .row{display:grid;gap:16px}
+  .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  @media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr}}
+  input,select{
+    width:100%;padding:12px 14px;border-radius:12px;border:1px solid #e7e2df;background:transparent;color:var(--text)
+  }
+  .btn{
+    background:#ff7a59;border:none;color:#fff;padding:10px 16px;border-radius:999px;cursor:pointer;
+    font-weight:700;transition:.2s;box-shadow:0 6px 16px rgba(255,122,89,.3)
+  }
+  .btn:hover{transform:translateY(-1px);filter:brightness(.97)}
+  .btn.secondary{background:#2f2f2f}
+  .btn.ghost{background:transparent;border:1px solid #e7e2df;color:var(--text)}
+  .hidden{display:none !important}
+
+  /* menu cards */
+  .card{
+    background:var(--card);border:1px solid #efe6e2;border-radius:16px;overflow:hidden;
+    transition:.25s;box-shadow:0 4px 14px rgba(0,0,0,.06)
+  }
+  .card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.12)}
+  .card-img{aspect-ratio:16/10;width:100%;object-fit:cover}
+  .card-body{padding:12px 14px}
+  .card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .price{font-weight:700}
+  .tag{font-size:.75rem;background:#fff1e9;border:1px solid #ffd5c2;color:#b44a28;padding:4px 8px;border-radius:999px}
+
+  /* cart drawer */
+  .drawer{
+    position:fixed;top:0;right:0;height:100%;width:360px;max-width:95vw;background:var(--card);
+    box-shadow:var(--shadow);transform:translateX(105%);transition:.3s;z-index:30;padding:16px;overflow:auto
+  }
+  .drawer.open{transform:translateX(0)}
+  .drawer h3{margin:6px 0 10px}
+  .cart-item{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #e7e2df;padding:10px 0}
+  .qty{display:flex;align-items:center;gap:8px}
+  .qty button{border-radius:8px;padding:4px 8px}
+  .cart-footer{position:sticky;bottom:0;background:var(--card);padding:14px 8px;border-top:1px solid #eee}
+  .summary{display:flex;justify-content:space-between;margin:6px 0}
+  .chip{padding:4px 8px;border-radius:999px;border:1px solid #eae0db;font-size:.8rem}
+
+  /* toasts */
+  .toast{
+    position:fixed;top:20px;right:20px;z-index:40;background:#36b37e;color:#fff;
+    padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateX(120%);transition:.4s
+  }
+  .toast.show{opacity:1;transform:translateX(0)}
+  .toast.warn{background:var(--warn)} .toast.danger{background:var(--danger)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border:1px solid #eee;text-align:center}
+  th{background:#fff1e9}
+
+  /* status colors */
+  .st-prep{color:#b85b00;font-weight:700}
+  .st-ready{color:#c43d00;font-weight:700}
+  .st-done{color:#1b8d5a;font-weight:700}
+
+  /* progress steps */
+  .steps{display:flex;gap:8px;align-items:center;margin:10px 0 6px}
+  .step{flex:1;height:8px;border-radius:999px;background:#f1e5dd;position:relative;overflow:hidden}
+  .step.fill::after{content:"";position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#ff7a59,#ffb347)}
+
+  /* tabs */
+  .tabs{display:flex;gap:8px;margin:8px 0 14px;flex-wrap:wrap}
+  .tab{padding:8px 12px;border-radius:999px;border:1px solid #eee;cursor:pointer;font-weight:600}
+  .tab.active{background:#fff1e9;border-color:#ffcaa8}
+
+  /* animations */
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  /* headers actions */
+  .actions{display:flex;gap:10px;align-items:center}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div>
+        <h1>CanteenMate</h1>
+        <small>Eat Smart, Chill Hard</small>
+      </div>
+      <div class="actions">
+        <button class="toggle" id="darkToggle">🌙 Dark</button>
+        <button class="toggle" id="openCartBtn">🛒 Cart</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="container" id="roleSelect">
+    <h2>Login As</h2>
+    <p class="instructions">Enter your credentials below to log in to your account.</p>
+    <div class="row grid-2">
+      <div>
+        <h3>Student</h3>
+        <input id="studentId" placeholder="Student ID"/>
+        <input id="studentPass" placeholder="Password" type="password"/>
+        <button class="btn" id="studentLoginBtn">Login as Student</button>
+      </div>
+      <div>
+        <h3>Staff</h3>
+        <input id="staffId" placeholder="Staff ID"/>
+        <input id="staffPass" placeholder="Password" type="password"/>
+        <button class="btn" id="staffLoginBtn">Login as Staff</button>
+      </div>
+    </div>
+    <p class="chip">Demo creds — Students: <b>S1001/1234</b> or <b>S1002/abcd</b> • Staff: <b>admin/admin123</b></p>
+  </section>
+
+  <section class="container hidden" id="studentDashboard">
+    <h2>Welcome, <span id="studentName"></span> 👋</h2>
+    <p class="instructions">Select your favorite dishes and add them to your cart. Click "Cart" to view your order.</p>
+    <div class="row grid-3" id="menuGrid"></div>
+  </section>
+
+  <section class="container hidden" id="paymentPage">
+    <h2>Payment</h2>
+    <p class="instructions">Review your bill and choose your dining preference. Scan the QR code to pay with UPI.</p>
+    <div id="billBlock"></div>
+    <div style="margin:8px 0">
+      <label class="chip"><input type="radio" name="dine" value="Dine-In" checked> Dine-In</label>
+      <label class="chip"><input type="radio" name="dine" value="Parcel"> Parcel (₹10)</label>
+    </div>
+    <div class="row grid-2">
+      <div>
+        <h3>Pay via UPI</h3>
+        <img id="qr" alt="UPI QR" style="width:180px;height:180px;border-radius:12px;border:1px solid #eee"/>
+        <p class="muted">Scan & approve in your UPI app, then click “I’ve Paid”.</p>
+        <button class="btn" id="confirmPayBtn">I’ve Paid ✅</button>
+        <button class="btn ghost" id="backToMenuBtn">← Back</button>
+      </div>
+      <div>
+        <h3>Bill Details</h3>
+        <div id="billDetails"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="container hidden" id="orderSummary">
+    <h2>Order Summary</h2>
+    <p class="instructions">Track the status of your order below. The ETA shows an estimated time until it's ready.</p>
+    <div id="orderInfo"></div>
+    <div class="steps">
+      <div class="step" id="st1"></div>
+      <div class="step" id="st2"></div>
+      <div class="step" id="st3"></div>
+    </div>
+    <p>Status: <span id="orderStatus" class="st-prep">Preparing</span></p>
+    <p>ETA: <b><span id="etaClock">--:--</span></b></p>
+    <button class="btn" id="newOrderBtn">New Order</button>
+  </section>
+
+  <section class="container hidden" id="staffDashboard">
+    <h2>Staff Dashboard</h2>
+    <p class="instructions">Manage new orders and update their status. You can also view sales data and manage the menu.</p>
+    <div class="tabs">
+      <div class="tab active" data-filter="All">All</div>
+      <div class="tab" data-filter="Preparing">Preparing</div>
+      <div class="tab" data-filter="Ready">Ready</div>
+      <div class="tab" data-filter="Completed">Completed</div>
+    </div>
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>Order ID</th><th>Student</th><th>Items</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="ordersTable"></tbody>
+      </table>
+    </div>
+    <div class="row grid-2" style="margin-top:16px">
+      <div class="card">
+        <div class="card-body">
+          <h3>Today’s Stats</h3>
+          <p>Total Orders: <b id="totalOrders">0</b></p>
+          <p>Total Revenue: ₹<b id="totalRevenue">0</b></p>
+          <button class="btn ghost" id="clearDayBtn">🧹 Clear Day Sales</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body"><h3>Top Dishes</h3><canvas id="dishChart" height="160"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-body">
+        <h3>Menu Management</h3>
+        <p class="instructions">Turn items on or off to manage their availability for students.</p>
+        <div class="row grid-3" id="menuAdmin"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="drawer" id="cartDrawer">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3>🛒 Your Cart</h3>
+      <button class="btn ghost" id="closeCart">✕</button>
+    </div>
+    <div id="cartList"></div>
+    <div class="cart-footer">
+      <div class="summary"><span>Subtotal</span><b>₹<span id="subTotal">0</span></b></div>
+      <div class="summary"><span>GST (5%)</span><b>₹<span id="gst">0</span></b></div>
+      <div class="summary"><span>Parcel (if selected)</span><b>₹<span id="packFee">0</span></b></div>
+      <div class="summary"><span>Total</span><b>₹<span id="grandTotal">0</span></b></div>
+      <button class="btn" id="checkoutBtn">Checkout →</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+  <audio id="ding" preload="auto"
+    src="data:audio/mpeg;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQAA..."></audio>
+  <script>
+/* ----------------------- Data ----------------------- */
+const students=[{id:"S1001",pass:"1234",name:"Krishna"},{id:"S1002",pass:"abcd",name:"Hareesh"}];
+const staff={id:"admin",pass:"admin123",name:"Canteen Admin"};
+let menu=[
+  {id:1,name:"Idli Sambhar",price:30,img:"https://images.unsplash.com/photo-1604908554027-8625a6f7d1a6?q=80&w=1200&auto=format&fit=crop",tag:"South",available:true},
+  {id:2,name:"Masala Dosa",price:50,img:"https://images.unsplash.com/photo-1625944529053-8b0ca595d4a2?q=80&w=1200&auto=format&fit=crop",tag:"Crispy",available:true},
+  {id:3,name:"Veg Meals",price:100,img:"https://images.unsplash.com/photo-1628294895950-980928d74e9f?q=80&w=1200&auto=format&fit=crop",tag:"Combo",available:true},
+  {id:4,name:"Paneer Pizza",price:120,img:"https://images.unsplash.com/photo-1542281286-9e0a16bb7366?q=80&w=1200&auto=format&fit=crop",tag:"Cheesy",available:true},
+  {id:5,name:"Cold Coffee",price:60,img:"https://images.unsplash.com/photo-1511920170033-f8396924c348?q=80&w=1200&auto=format&fit=crop",tag:"Chill",available:true},
+  {id:6,name:"Chole Bhature",price:80,img:"https://images.unsplash.com/photo-1654859882172-1aa6aaafeecd?q=80&w=1200&auto=format&fit=crop",tag:"North",available:true},
+];
+let cart=[]; // {id, name, price, qty}
+let orders=JSON.parse(localStorage.getItem("orders")||"[]"); // persist
+let sales=JSON.parse(localStorage.getItem("sales")||"{}");   // dish -> qty
+let currentOrderId=null;
+let staffFilter="All";
+let dishChart=null;
+
+/* ----------------------- Utils ----------------------- */
+const $=sel=>document.querySelector(sel);
+const $$=sel=>document.querySelectorAll(sel);
+function toast(msg,type=""){const t=$("#toast");t.textContent=msg;t.className="toast "+type;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
+function playDing(){const a=$("#ding");if(a) {a.currentTime=0; a.play().catch(()=>{});} }
+function money(n){return Math.round(n)}
+
+/* Dark mode toggle */
+const darkToggle=$("#darkToggle");
+darkToggle.onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="dark"?"":"dark";darkToggle.textContent=document.documentElement.dataset.theme==="dark"?"☀️ Light":"🌙 Dark"}
+
+/* ----------------------- Auth ----------------------- */
+$("#studentLoginBtn").onclick=()=>{
+  const id=$("#studentId").value.trim(), pass=$("#studentPass").value.trim();
+  const u=students.find(s=>s.id===id&&s.pass===pass);
+  if(!u) return toast("Invalid student login","danger");
+  $("#roleSelect").classList.add("hidden");
+  $("#studentDashboard").classList.remove("hidden");
+  $("#studentName").textContent=u.name;
+  renderMenuGrid(); renderCart();
+};
+$("#staffLoginBtn").onclick=()=>{
+  const id=$("#staffId").value.trim(), pass=$("#staffPass").value.trim();
+  if(id===staff.id&&pass===staff.pass){
+    $("#roleSelect").classList.add("hidden");
+    $("#staffDashboard").classList.remove("hidden");
+    renderOrders(); renderMenuAdmin(); renderCharts();
+  } else toast("Invalid staff login","danger");
+};
+
+/* ----------------------- Menu (Student) ----------------------- */
+function renderMenuGrid(){
+  const grid=$("#menuGrid"); grid.innerHTML="";
+  menu.forEach(m=>{
+    const card=document.createElement("div"); card.className="card";
+    card.innerHTML=`
+      <img class="card-img" src="${m.img}" alt="${m.name}" />
+      <div class="card-body">
+        <div class="card-top">
+          <strong>${m.name}</strong>
+          <span class="price">₹${m.price}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="tag">${m.tag}</span>
+          ${m.available?`<button class="btn" data-add="${m.id}">Add</button>`:`<span class="chip">Unavailable</span>`}
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addToCart(+b.dataset.add));
+}
+
+function addToCart(id){
+  const item=menu.find(x=>x.id===id && x.available);
+  if(!item) return toast("Item unavailable","warn");
+  const already=cart.find(c=>c.id===id);
+  if(already) already.qty+=1; else cart.push({id:item.id,name:item.name,price:item.price,qty:1});
+  renderCart();
+  toast(`${item.name} added`);
+}
+
+/* ----------------------- Cart Drawer ----------------------- */
+const drawer=$("#cartDrawer");
+$("#openCartBtn").onclick=()=>drawer.classList.add("open");
+$("#closeCart").onclick=()=>drawer.classList.remove("open");
+
+function renderCart(){
+  const list=$("#cartList"); list.innerHTML="";
+  cart.forEach((c,i)=>{
+    const row=document.createElement("div"); row.className="cart-item";
+    row.innerHTML=`<div><b>${c.name}</b><div class="muted">₹${c.price}</div></div>
+      <div class="qty">
+        <button class="btn ghost" data-dec="${i}">-</button>
+        <b>${c.qty}</b>
+        <button class="btn ghost" data-inc="${i}">+</button>
+        <button class="btn" data-rem="${i}">✕</button>
+      </div>`;
+    list.appendChild(row);
+  });
+  list.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{cart[b.dataset.inc].qty++;renderCart()});
+  list.querySelectorAll("[data-dec]").forEach(b=>b.onclick=()=>{const idx=b.dataset.dec;cart[idx].qty=Math.max(1,cart[idx].qty-1);renderCart()});
+  list.querySelectorAll("[data-rem]").forEach(b=>b.onclick=()=>{cart.splice(b.dataset.rem,1);renderCart()});
+
+  const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const gst=Math.round(subtotal*0.05);
+  $("#subTotal").textContent=money(subtotal);
+  $("#gst").textContent=money(gst);
+  // pack fee preview depends on selection later; keep 0 here
+  $("#packFee").textContent="0";
+  $("#grandTotal").textContent=money(subtotal+gst);
+}
+$("#checkoutBtn").onclick=()=>{
+  if(cart.length===0) return toast("Cart is empty","warn");
+  $("#studentDashboard").classList.add("hidden");
+  $("#paymentPage").classList.remove("hidden");
+  drawer.classList.remove("open");
+  buildBill();
+};
+$("#backToMenuBtn").onclick=()=>{
+  $("#paymentPage").classList.add("hidden");
+  $("#studentDashboard").classList.remove("hidden");
+}
+
+/* ----------------------- Billing & Payment ----------------------- */
+function buildBill(){
+  const dine=document.querySelector('input[name="dine"]:checked')?.value||"Dine-In";
+  const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const gst=Math.round(subtotal*0.05);
+  const packFee=(dine==="Parcel")?10:0;
+  const total=subtotal+gst+packFee;
+
+  $("#billBlock").innerHTML=`<div class="chip">Mode: <b>${dine}</b></div>`;
+  $("#billDetails").innerHTML=`
+    <div class="summary"><span>Items</span><b>${cart.map(c=>`${c.name} × ${c.qty}`).join(", ")}</b></div>
+    <div class="summary"><span>Subtotal</span><b>₹${money(subtotal)}</b></div>
+    <div class="summary"><span>GST (5%)</span><b>₹${money(gst)}</b></div>
+    <div class="summary"><span>Parcel</span><b>₹${money(packFee)}</b></div>
+    <div class="summary"><span>Total</span><b>₹${money(total)}</b></div>
+  `;
+  // QR code for fun (works online)
+  const upiTxt=encodeURIComponent(`upi://pay?pa=canteen@upi&pn=CanteenMate&am=${total}&cu=INR&tn=Order`);
+  $("#qr").src=`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${upiTxt}`;
+  // update drawer pack fee preview
+  $("#packFee").textContent=money(packFee);
+  $("#grandTotal").textContent=money(total);
+}
+// re-build bill when dine option changes
+document.addEventListener("change",(e)=>{
+  if(e.target.name==="dine"){ buildBill(); }
+});
+
+$("#confirmPayBtn").onclick=()=>{
+  const dine=document.querySelector('input[name="dine"]:checked').value;
+  const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const gst=Math.round(subtotal*0.05);
+  const packFee=(dine==="Parcel")?10:0;
+  const total=subtotal+gst+packFee;
+
+  const order={
+    id:"O"+(orders.length+1),
+    student:$("#studentName").textContent||"Student",
+    items:cart.map(c=>`${c.name} x${c.qty}`).join(", "),
+    total:total, status:"Preparing", dine,
+    createdAt:Date.now(), etaMin:10+Math.floor(Math.random()*11) // 10-20
+  };
+  orders.push(order);
+  // track sales
+  cart.forEach(c=>{sales[c.name]=(sales[c.name]||0)+c.qty;});
+  localStorage.setItem("orders",JSON.stringify(orders));
+  localStorage.setItem("sales",JSON.stringify(sales));
+
+  currentOrderId=order.id;
+  cart=[]; renderCart();
+
+  $("#paymentPage").classList.add("hidden");
+  $("#orderSummary").classList.remove("hidden");
+  updateOrderSummary();
+  toast("Payment successful! Order placed ✅");
+};
+
+/* ----------------------- Student Order Summary ----------------------- */
+function updateOrderSummary(){
+  const o=orders.find(x=>x.id===currentOrderId); if(!o) return;
+  $("#orderInfo").innerHTML=`<div class="chip">Order <b>${o.id}</b> • ${o.dine}</div>
+    <div>Items: <b>${o.items}</b></div>
+    <div>Total: <b>₹${o.total}</b></div>`;
+
+  // progress bar & status color
+  $("#st1").classList.add("fill"); // ordered
+  $("#st2").classList.toggle("fill",["Ready","Completed"].includes(o.status));
+  $("#st3").classList.toggle("fill",o.status==="Completed");
+  const st=$("#orderStatus");
+  st.textContent=o.status;
+  st.className=o.status==="Completed"?"st-done":(o.status==="Ready"?"st-ready":"st-prep");
+
+  // ETA countdown
+  const elapsed=Math.floor((Date.now()-o.createdAt)/1000);
+  const totalSec=o.etaMin*60;
+  const remain=Math.max(0,totalSec-elapsed);
+  const mm=String(Math.floor(remain/60)).padStart(2,"0");
+  const ss=String(remain%60).padStart(2,"0");
+  $("#etaClock").textContent=`${mm}:${ss}`;
+}
+$("#newOrderBtn").onclick=()=>{
+  $("#orderSummary").classList.add("hidden");
+  $("#studentDashboard").classList.remove("hidden");
+}
+
+/* live countdown */
+setInterval(()=>{ if(!$("#orderSummary").classList.contains("hidden")) updateOrderSummary(); },1000);
+
+/* ----------------------- Staff Dashboard ----------------------- */
+function renderOrders(){
+  const tbody=$("#ordersTable"); tbody.innerHTML="";
+  const list=orders.filter(o=>staffFilter==="All"||o.status===staffFilter);
+  list.forEach((o,idx)=>{
+    const tr=document.createElement("tr");
+    const statClass=o.status==="Completed"?"st-done":(o.status==="Ready"?"st-ready":"st-prep");
+    tr.innerHTML=`<td>${o.id}</td><td>${o.student}</td><td>${o.items}</td><td>₹${o.total}</td>
+      <td class="${statClass}">${o.status}</td>
+      <td>
+        <button class="btn ghost" data-act="prep" data-id="${o.id}">Preparing</button>
+        <button class="btn" data-act="ready" data-id="${o.id}">Ready</button>
+        <button class="btn secondary" data-act="done" data-id="${o.id}">Completed</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  $("#totalOrders").textContent=orders.length;
+  $("#totalRevenue").textContent=orders.reduce((s,o)=>s+o.total,0);
+
+  // actions
+  tbody.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id;
+    const o=orders.find(x=>x.id===id); if(!o) return;
+    const act=b.dataset.act;
+    o.status= act==="prep"?"Preparing": act==="ready"?"Ready":"Completed";
+    localStorage.setItem("orders",JSON.stringify(orders));
+    renderOrders();
+  });
+}
+
+/* tabs */
+$$(".tab").forEach(t=>t.onclick=()=>{
+  $$(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  staffFilter=t.dataset.filter;
+  renderOrders();
+});
+
+/* charts */
+function renderCharts(){
+  const ctx=$("#dishChart");
+  const labels=Object.keys(sales);
+  const data=Object.values(sales);
+  if(dishChart){dishChart.destroy();}
+  dishChart=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label:"Qty Sold",data}]} ,options:{responsive:true,plugins:{legend:{display:false}}}});
+}
+
+/* Menu admin (toggle availability) */
+function renderMenuAdmin(){
+  const wrap=$("#menuAdmin"); wrap.innerHTML="";
+  menu.forEach(m=>{
+    const c=document.createElement("div"); c.className="card";
+    c.innerHTML=`<div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div><b>${m.name}</b><div class="muted">₹${m.price}</div></div>
+      <div>
+        <span class="chip">${m.available?"Available":"Off"}</span>
+        <button class="btn" data-toggle="${m.id}">${m.available?"Turn Off":"Turn On"}</button>
+      </div>
+    </div>`;
+    wrap.appendChild(c);
+  });
+  wrap.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.toggle;
+    const item=menu.find(x=>x.id===id);
+    item.available=!item.available;
+    renderMenuAdmin(); renderMenuGrid(); toast(`${item.name} ${item.available?"available":"turned off"}`);
+  });
+}
+
+/* Clear day sales */
+$("#clearDayBtn").onclick=()=>{
+  if(!confirm("Clear all orders & sales for today?")) return;
+  orders=[]; sales={};
+  localStorage.setItem("orders","[]"); localStorage.setItem("sales","{}");
+  renderOrders(); renderCharts();
+  toast("Day cleared");
+}
+
+/* ----------------------- Cross-tab Live Updates ----------------------- */
+window.addEventListener("storage",(e)=>{
+  if(e.key==="orders"){
+    orders=JSON.parse(localStorage.getItem("orders")||"[]");
+    // Student live updates
+    if(currentOrderId){
+      const o=orders.find(x=>x.id===currentOrderId);
+      if(o){
+        const prev=$("#orderStatus").textContent;
+        updateOrderSummary();
+        if(o.status==="Ready" && prev!=="Ready"){ toast("Your order is ready! 🧾",""); playDing(); }
+        if(o.status==="Completed" && prev!=="Completed"){ toast("Order completed! Enjoy 😋",""); playDing(); }
+      }
+    }
+    // Staff view refresh
+    if(!$("#staffDashboard").classList.contains("hidden")) renderOrders();
+  }
+  if(e.key==="sales"){
+    sales=JSON.parse(localStorage.getItem("sales")||"{}");
+    if(!$("#staffDashboard").classList.contains("hidden")) renderCharts();
+  }
+});
+
+/* ----------------------- Buttons wiring ----------------------- */
+$("#openCartBtn").onclick=()=>drawer.classList.add("open");
+$("#closeCart").onclick=()=>drawer.classList.remove("open");
+
+/* Safety: recalc bill if user changed dine later */
+document.addEventListener("visibilitychange",()=>{ if(!$("#paymentPage").classList.contains("hidden")) buildBill(); });
+
+</script>
+</body>
+</html>S
